@@ -21,8 +21,7 @@ it('modify api response', () => {
 
         /*    
             req.continue(res => {
-                res.body.articles[0].favoritesCount = 333333
-    
+                res.body.articles[0].favoritesCount = 333333    
             })
         */
     })    
