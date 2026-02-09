@@ -25,8 +25,7 @@ it('modify api response', () => {
     
             })
         */
-    })
-    
+    })    
 
     cy.loginToApplication()
     cy.get('app-favorite-button').first().should('contain.text', '8999999')
