@@ -19,16 +19,12 @@ it('modify api response', () => {
             res.send() // to send the modified response to the application
         })
 
-
-
         /*    
             req.continue(res => {
                 res.body.articles[0].favoritesCount = 333333
     
             })
         */
-
-
     })
 
     cy.loginToApplication()
