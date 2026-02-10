@@ -1,6 +1,8 @@
 /// <reference types="cypress" />
 
-it('first test', () => {
+import { faker } from '@faker-js/faker';
+
+it('first test',{tags:'@smoke'} ,() => {
 
     // cy.intercept('GET', '**/tags', { fixture: 'tags.json' }).as('tagsGet')
     cy.intercept({ method: 'GET', pathname: 'tags' }, { fixture: 'tags.json' }).as('tagsGet')
@@ -9,7 +11,7 @@ it('first test', () => {
 
 })
 
-it('modify api response', () => {
+it('modify api response', {retries:2, tags:['@smoke','@likes']},() => {
 
     cy.intercept('GET', '**/articles*', req => {
 
@@ -26,15 +28,17 @@ it('modify api response', () => {
         */
     })    
 
-    cy.loginToApplication()
+    cy.uiLogin()
     cy.get('app-favorite-button').first().should('contain.text', '8999999')
 })
 
-it('waiting for apis', () => {
+it('waiting for apis', {retries:2},() => {
     cy.intercept('GET', '**/articles*').as('articlesGet')
-    cy.loginToApplication()
+    cy.uiLogin()
     //cy.get('app-article-list').should('contain.text', 'Bondar Academy')  //waiting until the articles contain the text 'Bondar Academy'
-    cy.wait('@articlesGet')
+    cy.wait('@articlesGet').then(apiArticleObject => {
+        expect(apiArticleObject.response.body.articles[0].title).to.contain('Bondar Academy')
+    })
     cy.get('app-article-list').invoke('text').then(allArticleTexts => {
         expect(allArticleTexts).to.contain('Bondar Academy')
     })
@@ -42,43 +46,44 @@ it('waiting for apis', () => {
 })
 
 it('delete article', () => {
-    cy.loginToApplication()
+    const title = faker.person.fullName()
+    cy.loginToApplication() // to get the access token and set it to local storage and visit the application
     cy.get('@accessToken').then(accessToken => {
-
+        
         cy.request({
-            url: 'https://conduit-api.bondaracademy.com/api/articles/',
+            url: Cypress.env('apiUrl') + '/articles/',
             method: 'POST',
             body: {
                 "article": {
-                    "title": "Test title Cypress",
-                    "description": "Some description",
-                    "body": "This is a body",
+                    "title": title,
+                    "description": faker.person.jobDescriptor(),
+                    "body": faker.lorem.paragraph(10),
                     "tagList": []
                 }
             },
             headers: { 'Authorization': 'Token ' + accessToken }
         }).then(response => {
             expect(response.status).to.equal(201)
-            expect(response.body.article.title).to.equal('Test title Cypress')
+            expect(response.body.article.title).to.equal(title)
         })
     })
 
 
-    cy.contains('Test title Cypress').click()
+    cy.contains(title).click()
     cy.intercept('GET', '**/articles*').as('artcileApiCall')
     cy.contains('button', 'Delete Article').first().click()
     cy.wait('@artcileApiCall')
-    cy.get('app-article-list').should('not.contain.text', 'Test title Cypress')
+    cy.get('app-article-list').should('not.contain.text', title)
 })
 
 it('api testing', () => {
     cy.request({
-        url: 'https://conduit-api.bondaracademy.com/api/users/login',
+        url: Cypress.env('apiUrl') + '/users/login',
         method: 'POST',
         body: {
             "user": {
-                "email": "brkacaran@gmail.com",
-                "password": "Test@1234"
+                "email": Cypress.env('username'),
+                "password": Cypress.env('password')
             }
         }
     }).then(response => {
@@ -86,7 +91,7 @@ it('api testing', () => {
         const accessToken = 'Token ' + response.body.user.token
 
         cy.request({
-            url: 'https://conduit-api.bondaracademy.com/api/articles/',
+            url: Cypress.env('apiUrl') + '/articles/',
             method: 'POST',
             body: {
                 "article": {
@@ -103,7 +108,7 @@ it('api testing', () => {
         })
 
         cy.request({
-            url: 'https://conduit-api.bondaracademy.com/api/articles?limit=10&offset=0',
+            url: Cypress.env('apiUrl') + '/articles?limit=10&offset=0',
             method: 'GET',
             headers: { 'Authorization': accessToken }
         }).then(response => {
@@ -112,7 +117,7 @@ it('api testing', () => {
             const slugID = response.body.articles[0].slug
 
             cy.request({
-                url: `https://conduit-api.bondaracademy.com/api/articles/${slugID}`,
+                url: `${Cypress.env('apiUrl')}/articles/${slugID}`,
                 method: 'DELETE',
                 headers: { 'Authorization': accessToken }
             }).then(response => {
@@ -121,7 +126,7 @@ it('api testing', () => {
         })
 
         cy.request({
-            url: 'https://conduit-api.bondaracademy.com/api/articles?limit=10&offset=0',
+            url: Cypress.env('apiUrl') + '/articles?limit=10&offset=0',
             method: 'GET',
             headers: { 'Authorization': accessToken }
         }).then(response => {
